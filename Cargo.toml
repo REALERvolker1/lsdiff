@@ -1,6 +1,11 @@
 [package]
 name = "lsdiff"
+description = "A program to show you new files and folders"
+repository = "https://github.com/REALERvolker1/lsdiff"
+readme = "README.md"
+license = "GPL-3.0-only"
 version = "0.1.0"
+authors = ["vlk <https://github.com/REALERvolker1>"]
 edition = "2021"
 
 [dependencies]

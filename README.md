@@ -16,6 +16,8 @@ cargo build --release
 ln -s "$PWD/target/release/lsdiff" "$HOME/.local/bin/"
 ```
 
+Or you can download the file at `https://github.com/REALERvolker1/lsdiff/releases` 😅
+
 ## Configuration
 
 You can configure this with environment variables. I will likely make it file-based if someone wants that.
