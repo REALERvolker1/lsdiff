@@ -7,6 +7,7 @@ I wrote this because I occasionally see random folders popping up in my home dir
 ## Installation
 
 Run the following commands:
+
 ```
 # cd to whatever dir you install stuff from
 cd "$HOME/.local/librs"
@@ -30,12 +31,14 @@ These ones are purely for display. You don't have to worry about deleting cache 
 `$LSDIFF_ICON_FOLDER`: The folder icon. (Default: ``)
 `$LSDIFF_ICON_FILE`: The file icon. (Default: ``)
 
+Run `lsdiff -u` to update the cache file manually
+
 You can run `lsdiff -h` or `lsdiff --help` to get help.
 
 ## Notes
 
-- Some of this code was generated with ChatGPT
-- I might change the cache file format in the future. This will not affect users very much.
-- I might add a way to conveniently refresh the cache idk tho
+-   Some of this code was generated with ChatGPT
+-   I might change the cache file format in the future. This will not affect users very much.
+-   I might add a way to conveniently refresh the cache idk tho
 
 Pull requests welcome!

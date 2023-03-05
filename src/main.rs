@@ -41,7 +41,6 @@ fn main() -> Result<(), Error> {
         );
         println!("lsdiff -u -- lets you update the cache");
         process::exit(2);
-    } else if first_arg.contains("-u") {
     }
 
     if !Path::new(&filepath).exists() {
@@ -63,7 +62,7 @@ fn main() -> Result<(), Error> {
             &diff_file_path_str
         );
     } else {
-        let (files, diff) = read_diff_file(&diff_file_path)?;
+        let (files, diff) = read_diff_file(&diff_file_path, &first_arg)?;
 
         if files != current_files {
             let current_full: HashSet<_> = current_files.iter().collect();
@@ -129,7 +128,7 @@ fn output(basepath: &str, icons: &Icon, current: Vec<String>, original: Vec<Stri
 }
 
 // Vec<String>
-fn read_diff_file(diff_file: &Path) -> Result<(Vec<String>, bool), Error> {
+fn read_diff_file(diff_file: &Path, arg: &str) -> Result<(Vec<String>, bool), Error> {
     let diff_file = fs::read_to_string(diff_file)?;
     let mut diff_lines = diff_file.split("\n");
 
@@ -154,15 +153,9 @@ fn read_diff_file(diff_file: &Path) -> Result<(Vec<String>, bool), Error> {
     let unix_time_days = (unix_time / 60.0 / 60.0 / 24.0).floor();
 
     let mut diff = false;
-    if file_time != unix_time_days {
+    if file_time != unix_time_days || arg.contains("-u") {
         diff = true
     }
-    /*
-    Ok(Diff {
-        files: files,
-        diff: diff,
-    })
-    */
     Ok((files, diff))
 }
 
