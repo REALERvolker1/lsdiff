@@ -1,9 +1,11 @@
 use std::{
     collections::HashSet,
     env::{args, var},
+    fs,
     io::Error,
     path::Path,
     process,
+    time::{SystemTime, UNIX_EPOCH},
 };
 
 mod filesystem;
@@ -14,10 +16,111 @@ struct Icon {
     file: String,
 }
 
+pub struct State {
+    path: String,
+    path_list: Vec<String>,
+    cache: String,
+    cache_list: Vec<String>,
+    icon_folder: String,
+    icon_file: String,
+    diff: bool,
+}
+
+impl State {
+    fn get_path_state(&mut self) -> Result<(), Error> {
+        let files = fs::read_dir(self.path)?;
+        for file_entry in files {
+            let file = file_entry?.file_name();
+            self.path_list.push(format!("{}", file.to_str().unwrap())); // potential point of failure
+        }
+        Ok(())
+    }
+    fn get_diff_state(&mut self) -> () {
+        let diff_file = fs::read_to_string(self.cache);
+        if diff_file.is_err() {
+            println!("Failed to read diff file");
+        }
+        else {
+            let mut diff_lines = diff_file.unwrap().split("\n");
+            let file_time_index = diff_lines.position(|s| s == "[TIME]").unwrap_or(1);
+            let file_time = diff_lines
+                .nth(file_time_index)
+                .unwrap_or_else(|| {
+                    println!("Failed to parse diff file line at file_time_str");
+                    "0.0"
+                })
+                .parse()
+                .unwrap_or_else(|_| {
+                    println!("Failed to parse diff file float at file_time");
+                    0.0
+                });
+            let file_file_index = diff_lines.position(|s| s == "[FILES]").unwrap_or(2);
+            for file in diff_lines.skip(file_file_index) {
+                self.cache_list.push(String::from(file));
+            }
+            let current_time = get_time();
+            if file_time != current_time {
+                self.diff = true;
+            }
+        }
+    }
+    fn compare_lists() {}
+    fn set_diff(new_value: bool) {}
+}
+
+pub fn read_diff_file(diff_file: &Path, arg: &str) -> Result<(), Error> {
+    let diff_file = fs::read_to_string(diff_file)?;
+    let mut diff_lines = diff_file.split("\n");
+
+    let file_time_index = diff_lines.position(|s| s == "[TIME]").unwrap_or(1); // This returns an index starting from 1
+    let file_time_str = diff_lines.nth(file_time_index).unwrap_or_else(|| {
+        println!("Failed to parse diff file line at file_time_str");
+        "0.0"
+    });
+    let file_time: f64 = file_time_str.parse().unwrap_or_else(|_| {
+        println!("Failed to parse diff file float at file_time");
+        0.0
+    });
+
+    let file_file_index = diff_lines.position(|s| s == "[FILES]").unwrap_or(2); // This returns an index starting from 1
+    for file in diff_lines.skip(file_file_index) {
+        files.push(String::from(file));
+    }
+
+    if file_time != unix_time_days || arg.contains("-u") {
+        diff = true
+    }
+    Ok(())
+}
+
+fn get_time() -> f64 {
+    let systime = SystemTime::now();
+    let unix_time = systime.duration_since(UNIX_EPOCH).unwrap().as_secs_f64();
+    (unix_time / 60.0 / 60.0 / 24.0).floor()
+}
+
+pub fn build_state() -> Result<State, Error> {
+    let home = var("HOME").unwrap();
+    let cache_home = var("XDG_CACHE_HOME").unwrap_or(format!("{}/.cache", &home));
+    let directory = var("LSDIFF_DIR").unwrap_or(home);
+    let diff_file_path_str = var("LSDIFF_CACHE").unwrap_or(format!("{}/lsdiff.list", cache_home));
+    let folder_icon = var("LSDIFF_ICON_FOLDER").unwrap_or(String::from(""));
+    let file_icon = var("LSDIFF_ICON_FILE").unwrap_or(String::from(""));
+
+    let forcediff = parse_args(&directory, &diff_file_path_str, &folder_icon, &file_icon);
+
+    Ok(State {
+        path: directory,
+        path_list: Vec::new(),
+        cache: diff_file_path_str,
+        cache_list: Vec::new(),
+        icon_folder: folder_icon,
+        icon_file: file_icon,
+        diff: forcediff,
+    })
+}
+
 fn main() -> Result<(), Error> {
-
-    let arg = parse_args(&filepath, &diff_file_path_str, &folder_icon, &file_icon);
-
     if !Path::new(&filepath).exists() {
         println!(
             "path literal '{}' does not exist! Falling back to {}",
@@ -65,7 +168,8 @@ fn parse_args(
     diff_file_path_str: &str,
     folder_icon: &str,
     file_icon: &str,
-) -> String {
+) -> bool {
+    let mut res = false
     let first_arg = args().nth(1).unwrap_or(String::from(""));
     if first_arg.contains("-h") {
         println!(
@@ -81,6 +185,8 @@ fn parse_args(
         );
         println!("lsdiff -u -- lets you update the cache");
         process::exit(2);
+    } else if first_arg.contains("-u") {
+        res = true
     }
-    first_arg
+    res
 }
