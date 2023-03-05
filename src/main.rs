@@ -16,8 +16,6 @@ struct Icon {
 }
 
 fn main() -> Result<(), Error> {
-    let first_arg = args().nth(1).unwrap_or(String::from(""));
-
     let home = var("HOME").unwrap();
     let cache_home = var("XDG_CACHE_HOME").unwrap_or(format!("{}/.cache", &home));
     let mut filepath = var("LSDIFF_DIR").unwrap_or(home.clone());
@@ -27,21 +25,7 @@ fn main() -> Result<(), Error> {
         file: var("LSDIFF_ICON_FILE").unwrap_or(String::from("")),
     };
 
-    if first_arg.contains("-h") {
-        println!(
-            "This program will print the ls diff between a directory now, and the directory state from yesterday."
-        );
-        println!(
-            "'$LSDIFF_DIR': directory to diff (default: '$HOME', current: '{}')",
-            &filepath
-        );
-        println!("'$LSDIFF_CACHE': cache file to compare against (default: '$XDG_CACHE_HOME/lsdiff.list', current: '{}')", &diff_file_path_str);
-        println!(
-            "'$LSDIFF_ICON_FOLDER', '$LSDIFF_ICON_FILE': folder/file icons (default: ' ', current:'{} {}')", &icons.folder, &icons.file
-        );
-        println!("lsdiff -u -- lets you update the cache");
-        process::exit(2);
-    }
+    let arg = parse_args(&filepath, &diff_file_path_str, &icons);
 
     if !Path::new(&filepath).exists() {
         println!(
@@ -62,7 +46,7 @@ fn main() -> Result<(), Error> {
             &diff_file_path_str
         );
     } else {
-        let (files, diff) = filesystem::read_diff_file(&diff_file_path, &first_arg)?;
+        let (files, diff) = filesystem::read_diff_file(&diff_file_path, &arg)?;
 
         if files != current_files {
             let current_full: HashSet<_> = current_files.iter().collect();
@@ -125,4 +109,24 @@ fn output(basepath: &str, icons: &Icon, current: Vec<String>, original: Vec<Stri
         println!("{:<20}\t{:>20}", cur, ori);
         i += 1;
     }
+}
+
+fn parse_args(filepath: &str, diff_file_path_str: &str, icons: &Icon) -> String {
+    let first_arg = args().nth(1).unwrap_or(String::from(""));
+    if first_arg.contains("-h") {
+        println!(
+            "This program will print the ls diff between a directory now, and the directory state from yesterday."
+        );
+        println!(
+            "'$LSDIFF_DIR': directory to diff (default: '$HOME', current: '{}')",
+            &filepath
+        );
+        println!("'$LSDIFF_CACHE': cache file to compare against (default: '$XDG_CACHE_HOME/lsdiff.list', current: '{}')", &diff_file_path_str);
+        println!(
+            "'$LSDIFF_ICON_FOLDER', '$LSDIFF_ICON_FILE': folder/file icons (default: ' ', current:'{} {}')", &icons.folder, &icons.file
+        );
+        println!("lsdiff -u -- lets you update the cache");
+        process::exit(2);
+    }
+    first_arg
 }
