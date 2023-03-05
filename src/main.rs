@@ -10,18 +10,13 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
-struct Diff {
-    files: Vec<String>,
-    diff: bool,
-}
-
 struct Icon {
     folder: String,
     file: String,
 }
 
 fn main() -> Result<(), Error> {
-    let first_arg = args().nth(1);
+    let first_arg = args().nth(1).unwrap_or(String::from(""));
 
     let home = var("HOME").unwrap();
     let cache_home = var("XDG_CACHE_HOME").unwrap_or(format!("{}/.cache", &home));
@@ -32,7 +27,7 @@ fn main() -> Result<(), Error> {
         file: var("LSDIFF_ICON_FILE").unwrap_or(String::from("")),
     };
 
-    if first_arg.unwrap_or(String::from("")).contains("-h") {
+    if first_arg.contains("-h") {
         println!(
             "This program will print the ls diff between a directory now, and the directory state from yesterday."
         );
@@ -44,7 +39,9 @@ fn main() -> Result<(), Error> {
         println!(
             "'$LSDIFF_ICON_FOLDER', '$LSDIFF_ICON_FILE': folder/file icons (default: ' ', current:'{} {}')", &icons.folder, &icons.file
         );
+        println!("lsdiff -u -- lets you update the cache");
         process::exit(2);
+    } else if first_arg.contains("-u") {
     }
 
     if !Path::new(&filepath).exists() {
@@ -66,11 +63,11 @@ fn main() -> Result<(), Error> {
             &diff_file_path_str
         );
     } else {
-        let diff_original = read_diff_file(&diff_file_path)?;
+        let (files, diff) = read_diff_file(&diff_file_path)?;
 
-        if diff_original.files != current_files {
+        if files != current_files {
             let current_full: HashSet<_> = current_files.iter().collect();
-            let original_full: HashSet<_> = diff_original.files.iter().collect();
+            let original_full: HashSet<_> = files.iter().collect();
 
             let current_diff: Vec<_> = current_full.difference(&original_full).cloned().collect();
             let original_diff: Vec<_> = original_full.difference(&current_full).cloned().collect();
@@ -78,21 +75,8 @@ fn main() -> Result<(), Error> {
             let current_string: Vec<String> = current_diff.iter().map(|s| s.to_string()).collect();
             let original_string: Vec<String> =
                 original_diff.iter().map(|s| s.to_string()).collect();
-            /*
-                        let mut original_string: Vec<String> =
-                            original_diff.iter().map(|s| s.to_string()).collect();
-                        let mut current_string: Vec<String> =
-                            current_diff.iter().map(|s| s.to_string()).collect();
-
-                        current_string.push(".config".to_string());
-                        current_string.push(".bashrc".to_string());
-
-                        original_string.push(".xsession-errors".to_string());
-                        original_string.push("Documents".to_string());
-                        original_string.push(".cache".to_string());
-            */
             output(&filepath, &icons, current_string, original_string);
-            if diff_original.diff {
+            if diff {
                 println!("Saving current directory list to diff");
                 let _diff_file_write = write_diff_file(&current_files, &diff_file_path);
             }
@@ -145,7 +129,7 @@ fn output(basepath: &str, icons: &Icon, current: Vec<String>, original: Vec<Stri
 }
 
 // Vec<String>
-fn read_diff_file(diff_file: &Path) -> Result<Diff, Error> {
+fn read_diff_file(diff_file: &Path) -> Result<(Vec<String>, bool), Error> {
     let diff_file = fs::read_to_string(diff_file)?;
     let mut diff_lines = diff_file.split("\n");
 
@@ -173,11 +157,13 @@ fn read_diff_file(diff_file: &Path) -> Result<Diff, Error> {
     if file_time != unix_time_days {
         diff = true
     }
-
+    /*
     Ok(Diff {
         files: files,
         diff: diff,
     })
+    */
+    Ok((files, diff))
 }
 
 fn write_diff_file(current_files: &Vec<String>, diff_file_path: &Path) -> Result<(), Error> {
