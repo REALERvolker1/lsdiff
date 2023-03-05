@@ -15,12 +15,6 @@ struct Icon {
 }
 
 fn main() -> Result<(), Error> {
-    let home = var("HOME").unwrap();
-    let cache_home = var("XDG_CACHE_HOME").unwrap_or(format!("{}/.cache", &home));
-    let mut filepath = var("LSDIFF_DIR").unwrap_or(home.clone());
-    let diff_file_path_str = var("LSDIFF_CACHE").unwrap_or(format!("{}/lsdiff.list", cache_home));
-    let folder_icon = var("LSDIFF_ICON_FOLDER").unwrap_or(String::from(""));
-    let file_icon = var("LSDIFF_ICON_FILE").unwrap_or(String::from(""));
 
     let arg = parse_args(&filepath, &diff_file_path_str, &folder_icon, &file_icon);
 

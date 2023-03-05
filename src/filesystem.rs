@@ -1,9 +1,48 @@
 use std::{
+    env::var,
     fs,
     io::Error,
     path::Path,
     time::{SystemTime, UNIX_EPOCH},
 };
+
+pub struct State {
+    home_folder: String,
+    path: String,
+    cache: String,
+    icon_folder: String,
+    icon_file: String,
+}
+// let home = var("HOME").unwrap();
+impl State {
+    fn read_normal_dir(&self) -> Result<Vec<String>, Error> {
+        let files = fs::read_dir(self.path)?;
+
+        let current_files: Vec<String> = Vec::new();
+        for file_entry in files {
+            let file = file_entry?.file_name();
+            current_files.push(format!("{}", file.to_str().unwrap())); // potential point of failure
+        }
+        Ok(current_files)
+    }
+}
+
+pub fn build_state() -> Result<State, Error> {
+    let home = var("HOME").unwrap();
+    let cache_home = var("XDG_CACHE_HOME").unwrap_or(format!("{}/.cache", &home));
+    let directory = var("LSDIFF_DIR").unwrap_or(home);
+    let diff_file_path_str = var("LSDIFF_CACHE").unwrap_or(format!("{}/lsdiff.list", cache_home));
+    let folder_icon = var("LSDIFF_ICON_FOLDER").unwrap_or(String::from(""));
+    let file_icon = var("LSDIFF_ICON_FILE").unwrap_or(String::from(""));
+
+    Ok(State {
+        home_folder: home,
+        path: directory,
+        cache: diff_file_path_str,
+        icon_folder: folder_icon,
+        icon_file: file_icon,
+    })
+}
 
 pub fn read_diff_file(diff_file: &Path, arg: &str) -> Result<(Vec<String>, bool), Error> {
     let diff_file = fs::read_to_string(diff_file)?;
