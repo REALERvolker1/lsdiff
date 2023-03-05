@@ -1,5 +1,3 @@
-use lscolors::{LsColors, Style};
-use nu_ansi_term::Color;
 use std::{
     collections::HashSet,
     env::{args, var},
@@ -9,6 +7,7 @@ use std::{
 };
 
 mod filesystem;
+mod output;
 
 struct Icon {
     folder: String,
@@ -20,12 +19,10 @@ fn main() -> Result<(), Error> {
     let cache_home = var("XDG_CACHE_HOME").unwrap_or(format!("{}/.cache", &home));
     let mut filepath = var("LSDIFF_DIR").unwrap_or(home.clone());
     let diff_file_path_str = var("LSDIFF_CACHE").unwrap_or(format!("{}/lsdiff.list", cache_home));
-    let icons = Icon {
-        folder: var("LSDIFF_ICON_FOLDER").unwrap_or(String::from("")),
-        file: var("LSDIFF_ICON_FILE").unwrap_or(String::from("")),
-    };
+    let folder_icon = var("LSDIFF_ICON_FOLDER").unwrap_or(String::from(""));
+    let file_icon = var("LSDIFF_ICON_FILE").unwrap_or(String::from(""));
 
-    let arg = parse_args(&filepath, &diff_file_path_str, &icons);
+    let arg = parse_args(&filepath, &diff_file_path_str, &folder_icon, &file_icon);
 
     if !Path::new(&filepath).exists() {
         println!(
@@ -58,7 +55,7 @@ fn main() -> Result<(), Error> {
             let current_string: Vec<String> = current_diff.iter().map(|s| s.to_string()).collect();
             let original_string: Vec<String> =
                 original_diff.iter().map(|s| s.to_string()).collect();
-            output(&filepath, &icons, current_string, original_string);
+            output::output(&filepath, &icons, current_string, original_string);
             if diff {
                 println!("Saving current directory list to diff");
                 let _diff_file_write = filesystem::write_diff_file(&current_files, &diff_file_path);
@@ -69,49 +66,12 @@ fn main() -> Result<(), Error> {
     Ok(())
 }
 
-fn output(basepath: &str, icons: &Icon, current: Vec<String>, original: Vec<String>) -> () {
-    let lscolors = LsColors::from_env().unwrap_or_default();
-
-    let output_format = |file: String, op: String| {
-        let path_str = format!("{}/{}", &basepath, &file);
-        let path = Path::new(&path_str);
-        let style = lscolors.style_for_path(&path_str);
-
-        let ansi_style = style.map(Style::to_nu_ansi_term_style).unwrap_or_default();
-
-        let mut output_str = file;
-        if path.is_dir() {
-            output_str = format!("{} {}", &icons.folder, output_str)
-        } else {
-            output_str = format!("{} {}", &icons.file, output_str)
-        }
-
-        format!("{} {}", op, ansi_style.paint(&output_str))
-    };
-
-    let mut current_output: Vec<String> = Vec::new();
-    let mut original_output: Vec<String> = Vec::new();
-
-    for file in current {
-        current_output.push(output_format(
-            file,
-            Color::LightGreen.paint("+").to_string(),
-        ));
-    }
-    for file in original {
-        original_output.push(output_format(file, Color::Red.paint("-").to_string()));
-    }
-    let mut i = 0;
-    let nustr = Color::DarkGray.paint("---").to_string();
-    while i < current_output.len() || i < original_output.len() {
-        let cur = current_output.get(i).unwrap_or(&nustr);
-        let ori = original_output.get(i).unwrap_or(&nustr);
-        println!("{:<20}\t{:>20}", cur, ori);
-        i += 1;
-    }
-}
-
-fn parse_args(filepath: &str, diff_file_path_str: &str, icons: &Icon) -> String {
+fn parse_args(
+    filepath: &str,
+    diff_file_path_str: &str,
+    folder_icon: &str,
+    file_icon: &str,
+) -> String {
     let first_arg = args().nth(1).unwrap_or(String::from(""));
     if first_arg.contains("-h") {
         println!(
@@ -119,11 +79,11 @@ fn parse_args(filepath: &str, diff_file_path_str: &str, icons: &Icon) -> String 
         );
         println!(
             "'$LSDIFF_DIR': directory to diff (default: '$HOME', current: '{}')",
-            &filepath
+            filepath
         );
-        println!("'$LSDIFF_CACHE': cache file to compare against (default: '$XDG_CACHE_HOME/lsdiff.list', current: '{}')", &diff_file_path_str);
+        println!("'$LSDIFF_CACHE': cache file to compare against (default: '$XDG_CACHE_HOME/lsdiff.list', current: '{}')", diff_file_path_str);
         println!(
-            "'$LSDIFF_ICON_FOLDER', '$LSDIFF_ICON_FILE': folder/file icons (default: ' ', current:'{} {}')", &icons.folder, &icons.file
+            "'$LSDIFF_ICON_FOLDER', '$LSDIFF_ICON_FILE': folder/file icons (default: ' ', current:'{} {}')", folder_icon, file_icon
         );
         println!("lsdiff -u -- lets you update the cache");
         process::exit(2);
