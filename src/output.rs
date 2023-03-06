@@ -1,7 +1,7 @@
-use lscolors::{LsColors, Style};
-use nu_ansi_term::Color;
+use crate::State;
 
-pub fn output(basepath: &str, icons: &Icon, current: Vec<String>, original: Vec<String>) -> () {
+
+pub fn output(state: &State) -> () {
     let lscolors = LsColors::from_env().unwrap_or_default();
 
     let output_format = |file: String, op: String| {

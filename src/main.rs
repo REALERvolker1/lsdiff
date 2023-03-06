@@ -1,3 +1,5 @@
+use lscolors::{LsColors, Style};
+use nu_ansi_term::Color;
 use std::{
     collections::HashSet,
     env::{args, var},
@@ -7,14 +9,8 @@ use std::{
     process,
     time::{SystemTime, UNIX_EPOCH},
 };
-
 //mod filesystem;
 //mod output;
-
-struct Icon {
-    folder: String,
-    file: String,
-}
 
 pub struct State {
     path: String,
@@ -71,7 +67,7 @@ impl State {
             ),
         )
     }
-    fn compare_lists(&self) {
+    fn compare_lists(&self) -> (Vec<String>, Vec<String>) {
         let current_full: HashSet<_> = self.path_list.iter().collect();
         let original_full: HashSet<_> = self.cache_list.iter().collect();
 
@@ -80,11 +76,11 @@ impl State {
 
         let current_string: Vec<String> = current_diff.iter().map(|s| s.to_string()).collect();
         let original_string: Vec<String> = original_diff.iter().map(|s| s.to_string()).collect();
-        //output::output(&self);
         if self.diff {
             println!("Saving current directory list to diff");
             //let _diff_file_write = filesystem::write_diff_file(&current_files, &diff_file_path);
         }
+        (current_string, original_string)
     }
 }
 
@@ -94,7 +90,7 @@ fn get_time() -> f64 {
     (unix_time / 60.0 / 60.0 / 24.0).floor()
 }
 
-pub fn build_state() -> Result<State, Error> {
+fn build_state() -> Result<State, Error> {
     let home = var("HOME").unwrap();
     let cache_home = var("XDG_CACHE_HOME").unwrap_or(format!("{}/.cache", &home));
     let default_directory = String::from(&home);
@@ -138,8 +134,52 @@ pub fn build_state() -> Result<State, Error> {
 fn main() -> Result<(), Error> {
     let state = build_state()?;
     println!("{}", state.path_list.join(" "));
+    let (path, diff) = state.compare_lists();
+    output(&state, path, diff);
 
     Ok(())
+}
+
+fn output(state: &State, current: Vec<String>, diff: Vec<String>) -> () {
+    let lscolors = LsColors::from_env().unwrap_or_default();
+
+    let output_format = |file: String, op: String| {
+        let path_str = format!("{}/{}", &state.path, &file);
+        let path = Path::new(&path_str);
+        let style = lscolors.style_for_path(&path_str);
+
+        let ansi_style = style.map(Style::to_nu_ansi_term_style).unwrap_or_default();
+
+        let mut output_str = file;
+        if path.is_dir() {
+            output_str = format!("{} {}", &state.icon_folder, output_str)
+        } else {
+            output_str = format!("{} {}", &state.icon_file, output_str)
+        }
+
+        format!("{} {}", op, ansi_style.paint(&output_str))
+    };
+
+    let mut current_output: Vec<String> = Vec::new();
+    let mut original_output: Vec<String> = Vec::new();
+
+    for file in current {
+        current_output.push(output_format(
+            file,
+            Color::LightGreen.paint("+").to_string(),
+        ));
+    }
+    for file in diff {
+        original_output.push(output_format(file, Color::Red.paint("-").to_string()));
+    }
+    let mut i = 0;
+    let nustr = Color::DarkGray.paint("---").to_string();
+    while i < current_output.len() || i < original_output.len() {
+        let cur = current_output.get(i).unwrap_or(&nustr);
+        let ori = original_output.get(i).unwrap_or(&nustr);
+        println!("{:<20}\t{:>20}", cur, ori);
+        i += 1;
+    }
 }
 
 fn parse_args(
