@@ -9,7 +9,7 @@ use std::{
 };
 
 //mod filesystem;
-mod output;
+//mod output;
 
 struct Icon {
     folder: String,
@@ -29,44 +29,41 @@ pub struct State {
 
 impl State {
     fn get_path_state(&mut self) -> Result<(), Error> {
-        let files = fs::read_dir(self.path)?;
+        let files = fs::read_dir(&self.path)?;
         for file_entry in files {
             let file = file_entry?.file_name();
             self.path_list.push(format!("{}", file.to_str().unwrap())); // potential point of failure
         }
         Ok(())
     }
-    fn get_diff_state(&mut self) -> () {
-        let diff_file = fs::read_to_string(self.cache);
-        if diff_file.is_err() {
-            println!("Failed to read diff file");
-        } else {
-            let mut diff_lines = diff_file.unwrap().split("\n");
-            let file_time_index = diff_lines.position(|s| s == "[TIME]").unwrap_or(1);
-            let file_time = diff_lines
-                .nth(file_time_index)
-                .unwrap_or_else(|| {
-                    println!("Failed to parse diff file line at file_time_str");
-                    "0.0"
-                })
-                .parse()
-                .unwrap_or_else(|_| {
-                    println!("Failed to parse diff file float at file_time");
-                    0.0
-                });
-            let file_file_index = diff_lines.position(|s| s == "[FILES]").unwrap_or(2);
-            for file in diff_lines.skip(file_file_index) {
-                self.cache_list.push(String::from(file));
-            }
-            let current_time = get_time();
-            if file_time != current_time {
-                self.diff = true;
-            }
+    fn get_diff_state(&mut self) -> Result<(), Error> {
+        let diff_file = fs::read_to_string(&self.cache)?;
+        let mut diff_lines = diff_file.split("\n");
+        let file_time_index = diff_lines.position(|s| s == "[TIME]").unwrap_or(1);
+        let file_time = diff_lines
+            .nth(file_time_index)
+            .unwrap_or_else(|| {
+                println!("Failed to parse diff file line at file_time_str");
+                "0.0"
+            })
+            .parse()
+            .unwrap_or_else(|_| {
+                println!("Failed to parse diff file float at file_time");
+                0.0
+            });
+        let file_file_index = diff_lines.position(|s| s == "[FILES]").unwrap_or(2);
+        for file in diff_lines.skip(file_file_index) {
+            self.cache_list.push(String::from(file));
         }
+        let current_time = get_time();
+        if file_time != current_time {
+            self.diff = true;
+        }
+        Ok(())
     }
     fn write_diff_cache(&self) -> Result<(), Error> {
         fs::write(
-            self.cache,
+            &self.cache,
             format!(
                 "[TIME]\n{}\n[FILES]\n{}",
                 self.time,
@@ -74,7 +71,21 @@ impl State {
             ),
         )
     }
-    fn compare_lists() {}
+    fn compare_lists(&self) {
+        let current_full: HashSet<_> = self.path_list.iter().collect();
+        let original_full: HashSet<_> = self.cache_list.iter().collect();
+
+        let current_diff: Vec<_> = current_full.difference(&original_full).cloned().collect();
+        let original_diff: Vec<_> = original_full.difference(&current_full).cloned().collect();
+
+        let current_string: Vec<String> = current_diff.iter().map(|s| s.to_string()).collect();
+        let original_string: Vec<String> = original_diff.iter().map(|s| s.to_string()).collect();
+        //output::output(&self);
+        if self.diff {
+            println!("Saving current directory list to diff");
+            //let _diff_file_write = filesystem::write_diff_file(&current_files, &diff_file_path);
+        }
+    }
 }
 
 fn get_time() -> f64 {
@@ -108,7 +119,7 @@ pub fn build_state() -> Result<State, Error> {
 
     let forcediff = parse_args(&directory, &cache, &folder_icon, &file_icon);
 
-    let state = State {
+    let mut state = State {
         path: directory,
         path_list: Vec::new(),
         cache: cache,
@@ -118,45 +129,16 @@ pub fn build_state() -> Result<State, Error> {
         diff: forcediff,
         time: get_time(),
     };
-    state.get_diff_state();
-    state.get_path_state();
+    state.get_diff_state()?;
+    state.get_path_state()?;
 
     Ok(state)
 }
 
 fn main() -> Result<(), Error> {
-    /*
-        let current_files = filesystem::read_normal_dir(&filepath)?;
+    let state = build_state()?;
+    println!("{}", state.path_list.join(" "));
 
-        let diff_file_path = Path::new(&diff_file_path_str);
-
-        if !&diff_file_path.exists() {
-            let _writing = filesystem::write_diff_file(&current_files, &diff_file_path);
-            println!(
-                "Creating new lsdiff cache file ({}). Run 'lsdiff' again to see normal results.",
-                &diff_file_path_str
-            );
-        } else {
-            let (files, diff) = filesystem::read_diff_file(&diff_file_path, &arg)?;
-
-            if files != current_files {
-                let current_full: HashSet<_> = current_files.iter().collect();
-                let original_full: HashSet<_> = files.iter().collect();
-
-                let current_diff: Vec<_> = current_full.difference(&original_full).cloned().collect();
-                let original_diff: Vec<_> = original_full.difference(&current_full).cloned().collect();
-
-                let current_string: Vec<String> = current_diff.iter().map(|s| s.to_string()).collect();
-                let original_string: Vec<String> =
-                    original_diff.iter().map(|s| s.to_string()).collect();
-                output::output(&filepath, &icons, current_string, original_string);
-                if diff {
-                    println!("Saving current directory list to diff");
-                    let _diff_file_write = filesystem::write_diff_file(&current_files, &diff_file_path);
-                }
-            }
-        }
-    */
     Ok(())
 }
 
