@@ -6,8 +6,6 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
-
-
 pub fn write_diff_file(current_files: &Vec<String>, diff_file_path: &Path) -> Result<(), Error> {
     let mut contents: Vec<String> = Vec::new();
 
@@ -22,4 +20,30 @@ pub fn write_diff_file(current_files: &Vec<String>, diff_file_path: &Path) -> Re
     contents.push(file_string);
 
     fs::write(diff_file_path, contents.join("\n"))
+}
+
+
+pub fn read_diff_file(diff_file: &Path, arg: &str) -> Result<(), Error> {
+    let diff_file = fs::read_to_string(diff_file)?;
+    let mut diff_lines = diff_file.split("\n");
+
+    let file_time_index = diff_lines.position(|s| s == "[TIME]").unwrap_or(1); // This returns an index starting from 1
+    let file_time_str = diff_lines.nth(file_time_index).unwrap_or_else(|| {
+        println!("Failed to parse diff file line at file_time_str");
+        "0.0"
+    });
+    let file_time: f64 = file_time_str.parse().unwrap_or_else(|_| {
+        println!("Failed to parse diff file float at file_time");
+        0.0
+    });
+
+    let file_file_index = diff_lines.position(|s| s == "[FILES]").unwrap_or(2); // This returns an index starting from 1
+    for file in diff_lines.skip(file_file_index) {
+        files.push(String::from(file));
+    }
+
+    if file_time != unix_time_days || arg.contains("-u") {
+        diff = true
+    }
+    Ok(())
 }
