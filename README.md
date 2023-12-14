@@ -1,3 +1,5 @@
+This project is archived. I have made a new lsdiff program in rust in my [dotfiles](https://github.com/REALERvolker1/homescripts/tree/main/.config/rustcfg/lsdiff-rs)
+
 # LSDIFF
 
 A simple rust "script" that shows you what files were added to or removed from a directory
